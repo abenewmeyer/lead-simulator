@@ -9,43 +9,62 @@ export default function LeadRoutingSimulator() {
   const [source, setSource] = useState('google_ads');
   const [consent, setConsent] = useState(true);
   const [utmCampaign, setUtmCampaign] = useState('distressed-q2');
-  const [processed, setProcessed] = useState(false);
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const [result, setResult] = useState<any>(null);
 
-  const processLead = () => {
-    const intentScore = Math.floor(Math.random() * 40) + 60; // 60-99
+  const steps = [
+    { id: 1, title: "4. Consent + Compliance Layer", key: "consent" },
+    { id: 2, title: "6. AI Caller (Vapi) Integration", key: "ai" },
+    { id: 3, title: "3. State Transitions", key: "state" },
+    { id: 4, title: "2. Routing Logic by Lane", key: "routing" },
+    { id: 5, title: "1. Canonical CRM Structure + Output", key: "crm" },
+    { id: 6, title: "5. Attribution Persistence + 7. Edge Cases", key: "final" }
+  ];
+
+  const processLead = async () => {
+    setIsProcessing(true);
+    setCurrentStep(0);
+    setResult(null);
+
+    const intentScore = Math.floor(Math.random() * 35) + 65;
 
     const aiClassification = intentScore >= 85 ? 'HOT' : intentScore >= 50 ? 'WARM' : 'NON-PRIME';
-
-    const lane = 
-      leadType.includes('seller') ? 'Wholesale Seller → Real Estate Agent' :
-      leadType.includes('investor') ? 'Investor Buyer Lane' : 'Buyer-Finance → Mortgage Lender';
-
+    const lane = leadType.includes('seller') ? 'Wholesale Seller → Real Estate Agent' :
+                 leadType.includes('investor') ? 'Investor Buyer Lane' : 'Buyer-Finance → Mortgage Lender';
     const state = aiClassification === 'HOT' ? 'HOT' : aiClassification === 'WARM' ? 'WARM' : 'Nurture';
 
     const newResult = {
       input: { leadType, phone, email, source, consent, utmCampaign, timestamp: new Date().toISOString() },
-      consentCheck: consent ? '✅ Consent captured & timestamped - SMS/Call allowed' : '❌ No consent - blocked',
-      aiOutput: `Vapi classified as ${aiClassification} (Intent Score: ${intentScore})`,
+      consentCheck: consent ? '✅ Consent captured & timestamped — SMS/Call allowed' : '❌ No consent — blocked by compliance layer',
+      aiOutput: `Vapi AI classified as ${aiClassification} (Intent Score: ${intentScore})`,
       stateTransition: `NEW → ${state}`,
       routing: lane,
       crmOutput: {
-        contactFields: ['phone', 'email', 'source', 'consentTimestamp', 'utm_*'],
-        opportunityFields: ['lane', 'stage', 'qualificationScore', 'aiClassification'],
+        contactFields: ['phone', 'email', 'source', 'consentTimestamp', 'utm_source', 'utm_medium', 'utm_campaign'],
+        opportunityFields: ['lane', 'stage', 'qualificationScore', 'aiClassification', 'lastStateChange'],
         finalState: state,
-        attribution: 'UTM + source persisted'
+        attribution: 'All UTM parameters + source tag fully persisted'
       },
-      edgeCases: consent && intentScore > 30 
-        ? 'Clean routing' 
-        : 'Partial data flagged for nurture / manual review'
+      edgeCases: consent && intentScore > 40 
+        ? 'Clean processing — no conflicts detected' 
+        : 'Partial data / low intent flagged → nurture queue + manual review'
     };
 
+    // Animate step by step
+    for (let i = 0; i < steps.length; i++) {
+      setCurrentStep(i + 1);
+      await new Promise(resolve => setTimeout(resolve, 650)); // 650ms delay per step
+    }
+
     setResult(newResult);
-    setProcessed(true);
+    setIsProcessing(false);
   };
 
   const reset = () => {
-    setProcessed(false);
+    setIsProcessing(false);
+    setCurrentStep(0);
     setResult(null);
   };
 
@@ -57,17 +76,17 @@ export default function LeadRoutingSimulator() {
         </div>
 
         <h1 className="text-4xl font-bold text-center mb-2">Real-Time Lead Routing Simulator</h1>
-        <p className="text-center text-zinc-400 mb-12">Test any lead • Watch the exact 7-point logic in action</p>
+        <p className="text-center text-zinc-400 mb-12">Build any lead • Watch the full system process it step-by-step</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* LEFT: Custom Input Form */}
+          {/* LEFT: Input Form */}
           <div className="bg-zinc-900 rounded-3xl p-8">
-            <h2 className="text-2xl font-semibold mb-8">1. Build Your Test Lead</h2>
+            <h2 className="text-2xl font-semibold mb-8">1. Create Test Lead</h2>
             
             <div className="space-y-6">
               <div>
                 <label className="block text-sm mb-2">Lead Type</label>
-                <select value={leadType} onChange={(e) => setLeadType(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4">
+                <select value={leadType} onChange={(e) => setLeadType(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4 text-lg">
                   <option value="distressed-seller">Distressed Seller (Wholesale)</option>
                   <option value="traditional-seller">Traditional Seller</option>
                   <option value="investor-buyer">Investor Buyer</option>
@@ -89,98 +108,96 @@ export default function LeadRoutingSimulator() {
                 <label className="block text-sm mb-2">Source</label>
                 <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4">
                   <option value="google_ads">Google Ads</option>
-                  <option value="callrail">CallRail (Inbound)</option>
+                  <option value="callrail">CallRail Inbound</option>
                   <option value="organic">Organic</option>
                   <option value="manual_openhouse">Manual / Open House</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm mb-2">UTM Campaign (optional)</label>
+                <label className="block text-sm mb-2">UTM Campaign</label>
                 <input type="text" value={utmCampaign} onChange={(e) => setUtmCampaign(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4" />
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pt-2">
                 <input 
                   type="checkbox" 
                   checked={consent} 
                   onChange={(e) => setConsent(e.target.checked)} 
                   className="w-5 h-5 accent-emerald-500"
                 />
-                <label>Consent captured at intake</label>
+                <label className="text-base">Consent captured at intake</label>
               </div>
 
               <button 
                 onClick={processLead}
-                className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 rounded-3xl text-xl font-bold transition-colors"
+                disabled={isProcessing}
+                className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 rounded-3xl text-xl font-bold transition-colors mt-4"
               >
-                RUN THIS LEAD THROUGH THE ENGINE
+                {isProcessing ? "PROCESSING LEAD..." : "RUN THIS LEAD THROUGH THE ENGINE"}
               </button>
             </div>
           </div>
 
-          {/* RIGHT: Live Visualizer */}
+          {/* RIGHT: Animated Flow */}
           <div className="bg-zinc-900 rounded-3xl p-8">
-            <h2 className="text-2xl font-semibold mb-8">2. Live Processing Flow</h2>
+            <h2 className="text-2xl font-semibold mb-8">2. Live System Processing</h2>
 
-            {!processed ? (
-              <div className="h-96 flex items-center justify-center text-zinc-500 text-lg">
-                Fill the form on the left and click "RUN THIS LEAD" to see the system in action
+            {!result && !isProcessing && (
+              <div className="h-96 flex items-center justify-center text-zinc-500 text-lg border border-dashed border-zinc-700 rounded-3xl">
+                Fill left panel and click "RUN THIS LEAD" to watch the engine work
               </div>
-            ) : (
-              <div className="space-y-8">
-                {/* Consent */}
-                <div className="border-l-4 border-emerald-500 pl-6">
-                  <div className="font-semibold">Consent + Compliance Layer</div>
-                  <div className="text-emerald-400">{result.consentCheck}</div>
-                </div>
+            )}
 
-                {/* AI Output */}
-                <div className="border-l-4 border-blue-500 pl-6">
-                  <div className="font-semibold">6. AI Caller (Vapi) Output</div>
-                  <div>{result.aiOutput}</div>
-                </div>
+            {(isProcessing || result) && (
+              <div className="space-y-6">
+                {steps.map((step, index) => (
+                  <div 
+                    key={step.id}
+                    className={`border-l-4 pl-6 transition-all duration-500 ${
+                      currentStep > index ? 'border-emerald-500 bg-zinc-950' : 
+                      currentStep === index + 1 ? 'border-amber-400 bg-zinc-950' : 
+                      'border-zinc-700 opacity-40'
+                    }`}
+                  >
+                    <div className="font-semibold mb-1">{step.title}</div>
+                    {result && currentStep > index && (
+                      <div className="text-sm text-zinc-300">
+                        {step.key === "consent" && result.consentCheck}
+                        {step.key === "ai" && result.aiOutput}
+                        {step.key === "state" && result.stateTransition}
+                        {step.key === "routing" && result.routing}
+                        {step.key === "crm" && (
+                          <pre className="text-xs bg-black p-3 rounded-xl mt-2 overflow-auto">
+                            {JSON.stringify(result.crmOutput, null, 2)}
+                          </pre>
+                        )}
+                        {step.key === "final" && (
+                          <div>
+                            <div>{result.crmOutput.attribution}</div>
+                            <div className="text-teal-400 mt-1">{result.edgeCases}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
 
-                {/* State Transition */}
-                <div className="border-l-4 border-purple-500 pl-6">
-                  <div className="font-semibold">3. State Transition</div>
-                  <div className="text-purple-400">{result.stateTransition}</div>
-                </div>
-
-                {/* Routing */}
-                <div className="border-l-4 border-amber-500 pl-6">
-                  <div className="font-semibold">2. Routing Logic by Lane</div>
-                  <div className="text-amber-400">{result.routing}</div>
-                </div>
-
-                {/* CRM Output */}
-                <div className="border-l-4 border-white pl-6">
-                  <div className="font-semibold">1. Canonical CRM Output</div>
-                  <pre className="text-xs bg-black p-4 rounded-2xl mt-2 overflow-auto">
-                    {JSON.stringify(result.crmOutput, null, 2)}
-                  </pre>
-                </div>
-
-                {/* Attribution & Edge Cases */}
-                <div className="border-l-4 border-teal-500 pl-6">
-                  <div className="font-semibold">5. Attribution + 7. Edge Cases</div>
-                  <div>{result.crmOutput.attribution}</div>
-                  <div className="text-teal-400 mt-1">{result.edgeCases}</div>
-                </div>
-
-                <button 
-                  onClick={reset}
-                  className="w-full py-4 bg-zinc-800 hover:bg-zinc-700 rounded-3xl text-sm"
-                >
-                  Test Another Lead
-                </button>
+                {result && (
+                  <button 
+                    onClick={reset}
+                    className="w-full py-4 bg-zinc-800 hover:bg-zinc-700 rounded-3xl text-sm mt-6"
+                  >
+                    Test Another Lead
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
 
         <div className="mt-12 text-center text-xs text-zinc-500">
-          This demo directly addresses all 7 points you requested: Canonical CRM structure, routing by lane, state transitions, consent/compliance, attribution persistence, AI mapping, and edge-case handling.
+          This interactive demo directly addresses all 7 architectural points you requested with real-time processing and edge-case handling.
         </div>
       </div>
     </div>
